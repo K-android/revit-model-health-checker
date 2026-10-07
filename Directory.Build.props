@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Selects the Revit version to build for. Pass -p:RevitVersion=2024|2025|2026.
+    Defaults to 2026. Each version gets its own obj folder so restores don't clash
+    (2024 = .NET Framework 4.8, 2025/2026 = .NET 8).
+  -->
+  <PropertyGroup>
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2026</RevitVersion>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(RevitVersion)\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

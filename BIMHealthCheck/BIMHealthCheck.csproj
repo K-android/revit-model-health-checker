@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    One project, three Revit versions. Build with:
+      dotnet build -c Release -p:RevitVersion=2024   (.NET Framework 4.8)
+      dotnet build -c Release -p:RevitVersion=2025   (.NET 8)
+      dotnet build -c Release -p:RevitVersion=2026   (.NET 8)
+    Or run build.ps1 at the repo root to build all of them.
+
+    Revit API assemblies come from the Nice3point.Revit.Api NuGet packages,
+    so Revit doesn't need to be installed on the build machine.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>BIMHealthCheck</AssemblyName>
+    <RootNamespace>BIMHealthCheck</RootNamespace>
+    <OutputType>Library</OutputType>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>$(MSBuildThisFileDirectory)..\bin\$(Configuration)\$(RevitVersion)\</OutputPath>
+    <Version>1.0.0</Version>
+    <DefineConstants>$(DefineConstants);REVIT$(RevitVersion)</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RevitVersion)' == '2024'">
+    <TargetFramework>net48</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RevitVersion)' != '2024'">
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <DefineConstants>$(DefineConstants);REVIT2025_OR_GREATER</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!-- Lets the .NET SDK compile net48 without the Framework targeting pack installed. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Copy the .addin manifest next to the DLL. -->
+  <Target Name="CopyAddinManifest" AfterTargets="Build">
+    <Copy SourceFiles="BIMHealthCheck.addin" DestinationFolder="$(OutputPath)" />
+  </Target>
+
+  <!--
+    Optional: dotnet build -p:RevitVersion=2026 -p:Deploy=true
+    copies the add-in straight into %APPDATA%\Autodesk\Revit\Addins\<version>\
+  -->
+  <Target Name="DeployToRevit" AfterTargets="CopyAddinManifest" Condition="'$(Deploy)' == 'true'">
+    <PropertyGroup>
+      <AddinDir>$(APPDATA)\Autodesk\Revit\Addins\$(RevitVersion)\</AddinDir>
+    </PropertyGroup>
+    <Copy SourceFiles="BIMHealthCheck.addin" DestinationFolder="$(AddinDir)" />
+    <Copy SourceFiles="$(OutputPath)BIMHealthCheck.dll;$(OutputPath)BIMHealthCheck.pdb" DestinationFolder="$(AddinDir)BIMHealthCheck\" ContinueOnError="true" />
+    <Message Importance="high" Text="Deployed BIMHealthCheck to $(AddinDir)" />
+  </Target>
+
+</Project>

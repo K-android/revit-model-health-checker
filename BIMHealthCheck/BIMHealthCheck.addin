@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>BIM Health Check</Name>
+    <!-- Relative to this .addin file: put the DLL in a BIMHealthCheck\ subfolder. -->
+    <Assembly>BIMHealthCheck\BIMHealthCheck.dll</Assembly>
+    <ClientId>B67D3E2F-4A91-4567-8910-123456789ABC</ClientId>
+    <FullClassName>BIMHealthCheck.App</FullClassName>
+    <VendorId>BIMHealthCheck</VendorId>
+    <VendorDescription>BIM Health Check Tool</VendorDescription>
+  </AddIn>
+</RevitAddIns>
