@@ -32,7 +32,7 @@ namespace BIMHealthCheck.Commands
                 HealthCheckEngine engine = new HealthCheckEngine();
                 HealthScore score = engine.RunAllChecks(doc);
 
-                HealthCheckDialog dialog = new HealthCheckDialog(score);
+                HealthCheckDialog dialog = new HealthCheckDialog(score, uidoc);
                 dialog.ShowDialog();
 
                 return Result.Succeeded;

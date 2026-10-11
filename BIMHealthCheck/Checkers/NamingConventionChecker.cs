@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -8,117 +8,248 @@ using BIMHealthCheck.Engine;
 namespace BIMHealthCheck.Checkers
 {
     /// <summary>
-    /// Checker for identifying elements that do not follow naming conventions.
+    /// Industry-aligned checker for identifying sloppy naming artifacts (unintended copies,
+    /// unrenamed placeholder families, and abandoned local views) without penalizing standard Revit defaults.
     /// </summary>
     public class NamingConventionChecker : IHealthChecker
     {
         /// <summary> Gets the checker name. </summary>
         public string Name => "NamingConventionChecker";
+
         /// <summary> Gets the checker display name. </summary>
-        public string DisplayName => "Naming Conventions";
+        public string DisplayName => "Naming Standards & Cleanup";
+
         /// <summary> Gets the checker weight. </summary>
         public double Weight => 0.15;
 
         /// <summary>
-        /// Runs the health check for naming conventions.
+        /// Runs the naming check focusing on actual model clutter rather than penalizing standard Revit names.
         /// </summary>
         /// <param name="doc">The Revit document to check.</param>
-        /// <returns>A CheckResult object with the findings.</returns>
+        /// <returns>A CheckResult object with findings and element IDs.</returns>
         public CheckResult Run(Document doc)
         {
             var result = new CheckResult { CheckerName = Name, DisplayName = DisplayName, Weight = Weight, Score = 100 };
             try
             {
                 int totalChecked = 0;
-                int nonCompliantViews = 0;
-                int nonCompliantSheets = 0;
-                int nonCompliantLevels = 0;
-                int nonCompliantGrids = 0;
-                int nonCompliantFamilies = 0;
+                int copyViews = 0;
+                int temp3DViews = 0;
+                int unnamedSheets = 0;
+                int copyLevelsAndGrids = 0;
+                int copyOrGenericFamilies = 0;
 
-                var views = new FilteredElementCollector(doc).OfClass(typeof(View)).Cast<View>().Where(v => !v.IsTemplate).ToList();
+                // 1. Views audit: Flag copy artifacts and abandoned "{3D - username}" views
+                // Note: Standard "{3D}", "Level 1", "Site", "Ref. Level", "Ground Floor" etc. are perfectly valid!
+                var views = new FilteredElementCollector(doc)
+                    .OfClass(typeof(View))
+                    .Cast<View>()
+                    .Where(v => !v.IsTemplate && v.ViewType != ViewType.Internal)
+                    .ToList();
+
+                var temp3DRegex = new Regex(@"^\{3D\s*-\s*.+\}$", RegexOptions.IgnoreCase);
+
                 foreach (var v in views)
                 {
                     totalChecked++;
-                    if (v.Name.StartsWith("Copy of", StringComparison.OrdinalIgnoreCase) || v.Name.Contains("{") || v.Name.Contains("}"))
+                    string vName = v.Name?.Trim() ?? string.Empty;
+
+                    if (IsCopyArtifact(vName))
                     {
-                        nonCompliantViews++;
-                        result.Score -= 1;
-                        result.Items.Add(new CheckItem { Description = $"Invalid View Name: {v.Name}", Severity = Severity.Warning, ElementId = v.Id.ToString(), Category = "View" });
+                        copyViews++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"View with 'Copy' artifact: \"{vName}\"",
+                            Severity = Severity.Warning,
+                            ElementId = v.Id.ToString(),
+                            Category = "Views"
+                        });
+                    }
+                    else if (temp3DRegex.IsMatch(vName))
+                    {
+                        temp3DViews++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"Abandoned user 3D view: \"{vName}\" (should be renamed or cleaned up)",
+                            Severity = Severity.Info,
+                            ElementId = v.Id.ToString(),
+                            Category = "Views"
+                        });
                     }
                 }
 
-                var sheets = new FilteredElementCollector(doc).OfClass(typeof(ViewSheet)).Cast<ViewSheet>().ToList();
-                var sheetRegex = new Regex("^[0-9]+$");
+                // 2. Sheets audit: Flag empty numbers or default "Unnamed" sheets
+                var sheets = new FilteredElementCollector(doc)
+                    .OfClass(typeof(ViewSheet))
+                    .Cast<ViewSheet>()
+                    .ToList();
+
                 foreach (var s in sheets)
                 {
                     totalChecked++;
-                    if (string.IsNullOrWhiteSpace(s.SheetNumber) || sheetRegex.IsMatch(s.SheetNumber))
+                    string sNum = s.SheetNumber?.Trim() ?? string.Empty;
+                    string sName = s.Name?.Trim() ?? string.Empty;
+
+                    if (string.IsNullOrWhiteSpace(sNum))
                     {
-                        nonCompliantSheets++;
-                        result.Score -= 1;
-                        result.Items.Add(new CheckItem { Description = $"Invalid Sheet Number: {s.SheetNumber}", Severity = Severity.Warning, ElementId = s.Id.ToString(), Category = "Sheet" });
+                        unnamedSheets++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = "Sheet with empty or missing sheet number",
+                            Severity = Severity.Error,
+                            ElementId = s.Id.ToString(),
+                            Category = "Sheets"
+                        });
+                    }
+                    else if (sName.Equals("Unnamed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        unnamedSheets++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"Sheet {sNum} has default name \"Unnamed\"",
+                            Severity = Severity.Warning,
+                            ElementId = s.Id.ToString(),
+                            Category = "Sheets"
+                        });
+                    }
+                    else if (IsCopyArtifact(sNum) || IsCopyArtifact(sName))
+                    {
+                        unnamedSheets++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"Sheet with copy artifact: {sNum} - \"{sName}\"",
+                            Severity = Severity.Warning,
+                            ElementId = s.Id.ToString(),
+                            Category = "Sheets"
+                        });
                     }
                 }
 
+                // 3. Levels & Grids audit: Flag accidental copy names
                 var levels = new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>().ToList();
-                var levelRegex = new Regex(@"^(Level \d+|L-\d+|[A-Za-z]+ \d+)$", RegexOptions.IgnoreCase);
                 foreach (var l in levels)
                 {
                     totalChecked++;
-                    if (l.Name.IndexOf("copy", StringComparison.OrdinalIgnoreCase) >= 0 || Regex.IsMatch(l.Name, "^[0-9]+$") || !levelRegex.IsMatch(l.Name))
+                    if (IsCopyArtifact(l.Name))
                     {
-                        nonCompliantLevels++;
-                        result.Score -= 3;
-                        result.Items.Add(new CheckItem { Description = $"Invalid Level Name: {l.Name}", Severity = Severity.Warning, ElementId = l.Id.ToString(), Category = "Level" });
+                        copyLevelsAndGrids++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"Level with 'Copy' artifact: \"{l.Name}\"",
+                            Severity = Severity.Warning,
+                            ElementId = l.Id.ToString(),
+                            Category = "Datum Elements"
+                        });
                     }
                 }
 
                 var grids = new FilteredElementCollector(doc).OfClass(typeof(Grid)).Cast<Grid>().ToList();
-                var gridRegex = new Regex("^[A-Za-z0-9]{1,2}$");
                 foreach (var g in grids)
                 {
                     totalChecked++;
-                    if (g.Name.IndexOf("copy", StringComparison.OrdinalIgnoreCase) >= 0 || !gridRegex.IsMatch(g.Name))
+                    if (IsCopyArtifact(g.Name))
                     {
-                        nonCompliantGrids++;
-                        result.Score -= 3;
-                        result.Items.Add(new CheckItem { Description = $"Invalid Grid Name: {g.Name}", Severity = Severity.Warning, ElementId = g.Id.ToString(), Category = "Grid" });
+                        copyLevelsAndGrids++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"Grid with 'Copy' artifact: \"{g.Name}\"",
+                            Severity = Severity.Warning,
+                            ElementId = g.Id.ToString(),
+                            Category = "Datum Elements"
+                        });
                     }
                 }
 
+                // 4. Families audit: Flag unrenamed "Family1", "Family2" or "Copy of" families
+                var genericFamilyRegex = new Regex(@"^Family\d+$", RegexOptions.IgnoreCase);
                 var families = new FilteredElementCollector(doc).OfClass(typeof(Family)).Cast<Family>().ToList();
-                var numRegex = new Regex("^[0-9]+$");
                 foreach (var f in families)
                 {
                     totalChecked++;
-                    if (f.Name.IndexOf("Copy", StringComparison.OrdinalIgnoreCase) >= 0 || numRegex.IsMatch(f.Name) || f.Name.Length > 80)
+                    string fName = f.Name?.Trim() ?? string.Empty;
+                    if (genericFamilyRegex.IsMatch(fName))
                     {
-                        nonCompliantFamilies++;
-                        result.Score -= 0.5;
-                        result.Items.Add(new CheckItem { Description = $"Invalid Family Name: {f.Name}", Severity = Severity.Warning, ElementId = f.Id.ToString(), Category = "Family" });
+                        copyOrGenericFamilies++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"Generic placeholder family name: \"{fName}\"",
+                            Severity = Severity.Warning,
+                            ElementId = f.Id.ToString(),
+                            Category = "Families"
+                        });
+                    }
+                    else if (IsCopyArtifact(fName))
+                    {
+                        copyOrGenericFamilies++;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"Family with 'Copy' artifact: \"{fName}\"",
+                            Severity = Severity.Warning,
+                            ElementId = f.Id.ToString(),
+                            Category = "Families"
+                        });
                     }
                 }
 
-                result.Score = Math.Max(0, result.Score);
+                int totalIssues = copyViews + temp3DViews + unnamedSheets + copyLevelsAndGrids + copyOrGenericFamilies;
 
-                result.Metrics["NonCompliantViews"] = nonCompliantViews;
-                result.Metrics["NonCompliantSheets"] = nonCompliantSheets;
-                result.Metrics["NonCompliantLevels"] = nonCompliantLevels;
-                result.Metrics["NonCompliantGrids"] = nonCompliantGrids;
-                result.Metrics["NonCompliantFamilies"] = nonCompliantFamilies;
-                result.Metrics["TotalChecked"] = totalChecked;
+                // Pragmatic scoring: deduction scales gracefully so standard models score 90-100
+                double deduction = (copyViews * 1.5)
+                                 + (temp3DViews * 0.5)
+                                 + (unnamedSheets * 2.0)
+                                 + (copyLevelsAndGrids * 2.0)
+                                 + (copyOrGenericFamilies * 1.0);
 
-                result.Summary = $"Checked {totalChecked} elements. Found {nonCompliantViews + nonCompliantSheets + nonCompliantLevels + nonCompliantGrids + nonCompliantFamilies} non-compliant names.";
+                result.Score = Math.Max(0, Math.Round(100.0 - Math.Min(100, deduction), 1));
+
+                result.Metrics["TotalElementsAudited"] = totalChecked;
+                result.Metrics["CopyViews"] = copyViews;
+                result.Metrics["Abandoned3DViews"] = temp3DViews;
+                result.Metrics["UnnamedSheets"] = unnamedSheets;
+                result.Metrics["CopyDatumElements"] = copyLevelsAndGrids;
+                result.Metrics["GenericOrCopyFamilies"] = copyOrGenericFamilies;
+
+                if (totalIssues == 0)
+                {
+                    result.Summary = $"Checked {totalChecked} elements. Clean naming standards with 0 copy artifacts!";
+                }
+                else
+                {
+                    result.Summary = $"Checked {totalChecked} elements. Found {totalIssues} items to clean up ({copyViews} copy views, {temp3DViews} user 3D views, {copyOrGenericFamilies} generic/copy families).";
+                }
             }
             catch (Exception ex)
             {
                 result.Score = 0;
-                result.Summary = $"Error during check: {ex.Message}";
+                result.Summary = $"Error during naming standards check: {ex.Message}";
                 result.Items.Add(new CheckItem { Description = ex.Message, Severity = Severity.Critical });
             }
 
             return result;
+        }
+
+        private static bool IsCopyArtifact(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return false;
+
+            if (name.StartsWith("Copy of", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (name.IndexOf(" - Copy", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            if (name.IndexOf(" Copy ", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            if (name.EndsWith(" Copy", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Matches e.g. "Floor Plan (1)", "Wall 1 (2)"
+            if (Regex.IsMatch(name, @"\s+\(\d+\)$"))
+                return true;
+
+            return false;
         }
     }
 }

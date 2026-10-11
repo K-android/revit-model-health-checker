@@ -1,41 +1,81 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using Microsoft.Win32;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using BIMHealthCheck.Engine;
 using BIMHealthCheck.Reporting;
+using Grid = System.Windows.Controls.Grid;
+using Binding = System.Windows.Data.Binding;
 
 namespace BIMHealthCheck.UI
 {
     /// <summary>
-    /// Interaction logic for HealthCheckDialog.xaml
+    /// Interaction logic for HealthCheckDialog.xaml.
+    /// Provides interactive inspection, category scoring, and Revit element selection/zoom.
     /// </summary>
     public partial class HealthCheckDialog : Window
     {
         private readonly HealthScore _healthScore;
+        private readonly UIDocument _uidoc;
 
-        public HealthCheckDialog(HealthScore healthScore)
+        /// <summary>
+        /// Initializes dialog with health score.
+        /// </summary>
+        public HealthCheckDialog(HealthScore healthScore) : this(healthScore, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes dialog with health score and active UIDocument for element interaction.
+        /// </summary>
+        public HealthCheckDialog(HealthScore healthScore, UIDocument uidoc)
         {
             _healthScore = healthScore;
+            _uidoc = uidoc;
             InitializeComponent();
+            AttachToRevitWindow();
             PopulateResults();
+        }
+
+        private void AttachToRevitWindow()
+        {
+            try
+            {
+                IntPtr handle = Process.GetCurrentProcess().MainWindowHandle;
+                if (handle != IntPtr.Zero)
+                {
+                    new WindowInteropHelper(this).Owner = handle;
+                }
+            }
+            catch
+            {
+                // Silently continue if window handle cannot be attached
+            }
         }
 
         private void PopulateResults()
         {
             // Set header values
-            ModelNameText.Text = _healthScore.ModelName;
-            ModelPathText.Text = _healthScore.ModelPath;
+            ModelNameText.Text = _healthScore.ModelName ?? "Current Model";
+            ModelPathText.Text = _healthScore.ModelPath ?? "(Unsaved Model)";
             ScoreText.Text = _healthScore.OverallScore.ToString("F0");
             GradeText.Text = _healthScore.Grade.ToString();
-            
-            // Set score color
-            ScoreBorder.Background = GetScoreColor(_healthScore.OverallScore);
-            GradeText.Foreground = GetScoreColor(_healthScore.OverallScore);
 
-            // Populate cards
+            // Set score color
+            var scoreColor = GetScoreColor(_healthScore.OverallScore);
+            ScoreBorder.Background = scoreColor;
+            GradeText.Foreground = scoreColor;
+
+            // Populate checker result cards
             foreach (var result in _healthScore.Results)
             {
                 var card = CreateResultCard(result);
@@ -45,37 +85,47 @@ namespace BIMHealthCheck.UI
 
         private UIElement CreateResultCard(CheckResult result)
         {
-            // Create main container
             var expander = new Expander
             {
-                Margin = new Thickness(0, 0, 0, 15),
-                Background = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(224, 224, 224)),
+                Margin = new Thickness(0, 0, 0, 10),
+                Background = System.Windows.Media.Brushes.White,
+                BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(224, 224, 224)),
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(0)
+                IsExpanded = result.Score < 80 // Automatically expand categories that need attention!
             };
 
-            // Custom header grid
-            var headerGrid = new Grid { Width = 800, Margin = new Thickness(5, 10, 5, 10) };
+            // Header grid
+            var headerGrid = new Grid { Margin = new Thickness(5, 5, 5, 5) };
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
 
-            var titleText = new TextBlock 
-            { 
-                Text = result.DisplayName, 
-                FontWeight = FontWeights.SemiBold, 
-                FontSize = 16,
+            var titlePanel = new StackPanel { Orientation = Orientation.Horizontal };
+            var statusCircle = new System.Windows.Shapes.Ellipse
+            {
+                Width = 10,
+                Height = 10,
+                Fill = GetScoreColor(result.Score),
+                Margin = new Thickness(0, 0, 10, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
-            Grid.SetColumn(titleText, 0);
-            headerGrid.Children.Add(titleText);
+            titlePanel.Children.Add(statusCircle);
+
+            var titleText = new TextBlock
+            {
+                Text = result.DisplayName,
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 14,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            titlePanel.Children.Add(titleText);
+            Grid.SetColumn(titlePanel, 0);
+            headerGrid.Children.Add(titlePanel);
 
             var scoreText = new TextBlock
             {
                 Text = $"{result.Score:F0} / 100",
                 FontWeight = FontWeights.Bold,
-                FontSize = 16,
+                FontSize = 14,
                 Foreground = GetScoreColor(result.Score),
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 15, 0)
@@ -95,9 +145,9 @@ namespace BIMHealthCheck.UI
                 Value = result.Score,
                 Maximum = 100,
                 Foreground = GetScoreColor(result.Score),
-                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)),
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(240, 240, 240)),
                 BorderThickness = new Thickness(0),
-                Margin = new Thickness(0, 0, 0, 15)
+                Margin = new Thickness(0, 0, 0, 10)
             };
             contentPanel.Children.Add(progressBar);
 
@@ -106,46 +156,60 @@ namespace BIMHealthCheck.UI
             {
                 Text = result.Summary,
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 15),
-                Foreground = new SolidColorBrush(Color.FromRgb(80, 80, 80))
+                Margin = new Thickness(0, 0, 0, 10),
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(80, 80, 80))
             };
             contentPanel.Children.Add(summaryText);
 
-            // Metrics
+            // Metrics key-value display
             if (result.Metrics != null && result.Metrics.Count > 0)
             {
-                var metricsTitle = new TextBlock { Text = "Metrics:", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 5) };
-                contentPanel.Children.Add(metricsTitle);
-
-                var metricsGrid = new Grid { Margin = new Thickness(0, 0, 0, 15) };
-                metricsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                metricsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-                int row = 0;
+                var metricsWrap = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
                 foreach (var kvp in result.Metrics)
                 {
-                    metricsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    
-                    var keyText = new TextBlock { Text = $"{kvp.Key}:", FontWeight = FontWeights.Medium, Margin = new Thickness(0, 2, 10, 2) };
-                    Grid.SetRow(keyText, row);
-                    Grid.SetColumn(keyText, 0);
-                    
-                    var valText = new TextBlock { Text = kvp.Value?.ToString(), Margin = new Thickness(0, 2, 0, 2) };
-                    Grid.SetRow(valText, row);
-                    Grid.SetColumn(valText, 1);
-                    
-                    metricsGrid.Children.Add(keyText);
-                    metricsGrid.Children.Add(valText);
-                    row++;
+                    if (kvp.Value is Dictionary<string, object> dict)
+                    {
+                        // Render nested dictionary items
+                        foreach (var sub in dict)
+                        {
+                            metricsWrap.Children.Add(CreateMetricBadge($"{kvp.Key}: {sub.Key}", sub.Value?.ToString()));
+                        }
+                    }
+                    else
+                    {
+                        metricsWrap.Children.Add(CreateMetricBadge(kvp.Key, kvp.Value?.ToString()));
+                    }
                 }
-                contentPanel.Children.Add(metricsGrid);
+                contentPanel.Children.Add(metricsWrap);
             }
 
-            // Items
+            // Items table
             if (result.Items != null && result.Items.Count > 0)
             {
-                var itemsTitle = new TextBlock { Text = "Findings:", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 5) };
-                contentPanel.Children.Add(itemsTitle);
+                var itemsHeaderGrid = new Grid { Margin = new Thickness(0, 0, 0, 5) };
+                itemsHeaderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                itemsHeaderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var itemsTitle = new TextBlock
+                {
+                    Text = $"Findings ({result.Items.Count}):",
+                    FontWeight = FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                itemsHeaderGrid.Children.Add(itemsTitle);
+
+                var tipText = new TextBlock
+                {
+                    Text = "Double-click row or click 'Show' to zoom to element",
+                    FontStyle = FontStyles.Italic,
+                    FontSize = 11,
+                    Foreground = System.Windows.Media.Brushes.Gray,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                Grid.SetColumn(tipText, 1);
+                itemsHeaderGrid.Children.Add(tipText);
+
+                contentPanel.Children.Add(itemsHeaderGrid);
 
                 var itemsGrid = new DataGrid
                 {
@@ -153,17 +217,72 @@ namespace BIMHealthCheck.UI
                     IsReadOnly = true,
                     HeadersVisibility = DataGridHeadersVisibility.Column,
                     Margin = new Thickness(0, 0, 0, 5),
-                    Background = Brushes.White,
-                    RowBackground = Brushes.White,
-                    AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(250, 250, 250)),
+                    Background = System.Windows.Media.Brushes.White,
+                    RowBackground = System.Windows.Media.Brushes.White,
+                    AlternatingRowBackground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(250, 250, 250)),
                     GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
-                    HorizontalGridLinesBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230))
+                    HorizontalGridLinesBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 230, 230)),
+                    MaxHeight = 280,
+                    SelectionMode = DataGridSelectionMode.Single
                 };
 
-                itemsGrid.Columns.Add(new DataGridTextColumn { Header = "Severity", Binding = new System.Windows.Data.Binding("Severity"), Width = new DataGridLength(80) });
-                itemsGrid.Columns.Add(new DataGridTextColumn { Header = "Category", Binding = new System.Windows.Data.Binding("Category"), Width = new DataGridLength(150) });
-                itemsGrid.Columns.Add(new DataGridTextColumn { Header = "Description", Binding = new System.Windows.Data.Binding("Description"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-                itemsGrid.Columns.Add(new DataGridTextColumn { Header = "Element ID", Binding = new System.Windows.Data.Binding("ElementId"), Width = new DataGridLength(100) });
+                itemsGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Severity",
+                    Binding = new Binding("Severity"),
+                    Width = new DataGridLength(75)
+                });
+
+                itemsGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Category",
+                    Binding = new Binding("Category"),
+                    Width = new DataGridLength(140)
+                });
+
+                itemsGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Description",
+                    Binding = new Binding("Description"),
+                    Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+                });
+
+                itemsGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = "Element ID",
+                    Binding = new Binding("ElementId"),
+                    Width = new DataGridLength(110)
+                });
+
+                // Action Column: "🔍 Show" button
+                var actionCol = new DataGridTemplateColumn
+                {
+                    Header = "Locate",
+                    Width = new DataGridLength(80)
+                };
+
+                var btnFactory = new FrameworkElementFactory(typeof(Button));
+                btnFactory.SetValue(Button.ContentProperty, "🔍 Show");
+                btnFactory.SetValue(Button.PaddingProperty, new Thickness(6, 2, 6, 2));
+                btnFactory.SetValue(Button.MarginProperty, new Thickness(2));
+                btnFactory.SetValue(Button.CursorProperty, Cursors.Hand);
+                btnFactory.SetValue(Button.BackgroundProperty, new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 215)));
+                btnFactory.SetValue(Button.ForegroundProperty, System.Windows.Media.Brushes.White);
+                btnFactory.SetValue(Button.FontSizeProperty, 11.0);
+                btnFactory.SetBinding(Button.TagProperty, new Binding("ElementId"));
+                btnFactory.AddHandler(Button.ClickEvent, new RoutedEventHandler(OnShowElementButtonClick));
+
+                var cellTemplate = new DataTemplate { VisualTree = btnFactory };
+                actionCol.CellTemplate = cellTemplate;
+                itemsGrid.Columns.Add(actionCol);
+
+                itemsGrid.MouseDoubleClick += (s, e) =>
+                {
+                    if (itemsGrid.SelectedItem is CheckItem item && !string.IsNullOrWhiteSpace(item.ElementId))
+                    {
+                        SelectAndZoomElement(item.ElementId);
+                    }
+                };
 
                 var sortedItems = result.Items.OrderByDescending(i => i.Severity).ToList();
                 itemsGrid.ItemsSource = sortedItems;
@@ -174,9 +293,10 @@ namespace BIMHealthCheck.UI
             {
                 var noItemsText = new TextBlock
                 {
-                    Text = "No issues found.",
+                    Text = "No issues found in this category.",
                     FontStyle = FontStyles.Italic,
-                    Foreground = Brushes.Gray
+                    Foreground = System.Windows.Media.Brushes.Gray,
+                    Margin = new Thickness(0, 5, 0, 5)
                 };
                 contentPanel.Children.Add(noItemsText);
             }
@@ -185,13 +305,121 @@ namespace BIMHealthCheck.UI
             return expander;
         }
 
+        private Border CreateMetricBadge(string key, string value)
+        {
+            var border = new Border
+            {
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(245, 247, 250)),
+                BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(220, 224, 230)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(6, 3, 6, 3),
+                Margin = new Thickness(0, 2, 8, 4)
+            };
+
+            var panel = new StackPanel { Orientation = Orientation.Horizontal };
+            panel.Children.Add(new TextBlock
+            {
+                Text = $"{key}: ",
+                FontWeight = FontWeights.Medium,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(100, 100, 100))
+            });
+            panel.Children.Add(new TextBlock
+            {
+                Text = value ?? "-",
+                FontWeight = FontWeights.Bold,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(40, 40, 40))
+            });
+
+            border.Child = panel;
+            return border;
+        }
+
+        private void OnShowElementButtonClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string idStr && !string.IsNullOrWhiteSpace(idStr))
+            {
+                SelectAndZoomElement(idStr);
+            }
+            else
+            {
+                SetStatus("Selected item does not have a direct Element ID.", true);
+            }
+        }
+
+        private void SelectAndZoomElement(string elementIdString)
+        {
+            if (_uidoc == null)
+            {
+                SetStatus("Cannot locate element: Revit active UIDocument reference is not available.", true);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(elementIdString))
+            {
+                SetStatus("Selected finding does not have an Element ID to navigate to.", false);
+                return;
+            }
+
+            try
+            {
+                var idList = new List<ElementId>();
+                var parts = elementIdString.Split(new[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var p in parts)
+                {
+                    if (long.TryParse(p.Trim(), out long idVal))
+                    {
+                        idList.Add(new ElementId(idVal));
+                    }
+                }
+
+                if (idList.Count == 0)
+                {
+                    SetStatus($"Could not parse valid Element ID from: \"{elementIdString}\"", true);
+                    return;
+                }
+
+                var doc = _uidoc.Document;
+                var validIds = idList.Where(id => doc.GetElement(id) != null).ToList();
+
+                if (validIds.Count > 0)
+                {
+                    _uidoc.Selection.SetElementIds(validIds);
+                    _uidoc.ShowElements(validIds);
+                    SetStatus($"✔ Selected and zoomed to {validIds.Count} element(s) [{string.Join(", ", validIds.Select(i => i.ToString()))}] in Revit.", false);
+                }
+                else
+                {
+                    SetStatus($"⚠ Element ID(s) [{elementIdString}] not found in active document (may be deleted or in linked file).", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"Revit navigation error: {ex.Message}", true);
+            }
+        }
+
+        private void SetStatus(string message, bool isWarning)
+        {
+            if (StatusMessageText != null)
+            {
+                StatusMessageText.Text = message;
+                StatusMessageText.Foreground = isWarning
+                    ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(210, 60, 40))
+                    : new SolidColorBrush(System.Windows.Media.Color.FromRgb(20, 130, 60));
+            }
+        }
+
         private SolidColorBrush GetScoreColor(double score)
         {
             if (score >= 80)
-                return new SolidColorBrush(Color.FromRgb(39, 174, 96)); // Green
-            if (score >= 50)
-                return new SolidColorBrush(Color.FromRgb(243, 156, 18)); // Yellow/Orange
-            return new SolidColorBrush(Color.FromRgb(231, 76, 60)); // Red
+                return new SolidColorBrush(System.Windows.Media.Color.FromRgb(39, 174, 96)); // Green
+            if (score >= 60)
+                return new SolidColorBrush(System.Windows.Media.Color.FromRgb(243, 156, 18)); // Yellow/Orange
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(231, 76, 60)); // Red
         }
 
         private void ExportHtmlButton_Click(object sender, RoutedEventArgs e)

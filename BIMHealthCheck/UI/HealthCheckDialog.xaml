@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="BIM Health Check Results" 
-        Height="700" Width="900" 
+        Title="BIM Health Check Results &amp; Navigation" 
+        Height="720" Width="960" 
         WindowStartupLocation="CenterScreen"
         Background="#F5F6F8"
         FontFamily="Segoe UI">
@@ -61,6 +61,35 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="ShowActionButton" TargetType="Button">
+            <Setter Property="Background" Value="#0078D7"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#005A9E"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#CCCCCC"/>
+                                <Setter Property="Foreground" Value="#888888"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -79,7 +108,7 @@
                 </Grid.ColumnDefinitions>
                 
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Model Analysis Complete" FontSize="14" Foreground="#666666" Margin="0,0,0,5"/>
+                    <TextBlock Text="Model Health Analysis Complete" FontSize="14" Foreground="#666666" Margin="0,0,0,5"/>
                     <TextBlock x:Name="ModelNameText" FontSize="22" FontWeight="Bold" Foreground="#333333" TextTrimming="CharacterEllipsis"/>
                     <TextBlock x:Name="ModelPathText" FontSize="12" Foreground="#888888" TextTrimming="CharacterEllipsis" Margin="0,5,0,0"/>
                 </StackPanel>
@@ -114,12 +143,17 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Button Content="Export HTML Report" Click="ExportHtmlButton_Click"/>
-                    <Button Content="Export CSV" Style="{StaticResource SecondaryButton}" Click="ExportCsvButton_Click"/>
+                <StackPanel Grid.Column="0" Orientation="Vertical">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Export HTML Report" Click="ExportHtmlButton_Click"/>
+                        <Button Content="Export CSV" Style="{StaticResource SecondaryButton}" Click="ExportCsvButton_Click"/>
+                    </StackPanel>
+                    <TextBlock x:Name="StatusMessageText" 
+                               Text="💡 Tip: Click '🔍 Show' or double-click any row to highlight and zoom to that element in Revit." 
+                               FontSize="11" Foreground="#444444" Margin="5,4,0,0" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 
-                <Button Grid.Column="1" Content="Close" Style="{StaticResource SecondaryButton}" Click="CloseButton_Click" MinWidth="100"/>
+                <Button Grid.Column="1" Content="Close" Style="{StaticResource SecondaryButton}" Click="CloseButton_Click" MinWidth="100" VerticalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>

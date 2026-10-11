@@ -7,14 +7,17 @@ using BIMHealthCheck.Engine;
 namespace BIMHealthCheck.Checkers
 {
     /// <summary>
-    /// Checker for analyzing worksets and worksharing settings.
+    /// Industry-aligned checker for analyzing worksets and worksharing settings.
+    /// Evaluates workset configuration, unrenamed default worksets, and distribution.
     /// </summary>
     public class WorksetChecker : IHealthChecker
     {
         /// <summary> Gets the checker name. </summary>
         public string Name => "WorksetChecker";
+
         /// <summary> Gets the checker display name. </summary>
-        public string DisplayName => "Workset Configuration";
+        public string DisplayName => "Workset Organization";
+
         /// <summary> Gets the checker weight. </summary>
         public double Weight => 0.10;
 
@@ -22,7 +25,7 @@ namespace BIMHealthCheck.Checkers
         /// Runs the health check for worksets.
         /// </summary>
         /// <param name="doc">The Revit document to check.</param>
-        /// <returns>A CheckResult object with the findings.</returns>
+        /// <returns>A CheckResult object with findings.</returns>
         public CheckResult Run(Document doc)
         {
             var result = new CheckResult { CheckerName = Name, DisplayName = DisplayName, Weight = Weight, Score = 100 };
@@ -30,33 +33,51 @@ namespace BIMHealthCheck.Checkers
             {
                 if (!doc.IsWorkshared)
                 {
-                    result.Summary = "Non-workshared model";
-                    result.Metrics["WorksetCount"] = 0;
+                    result.Summary = "Model is not workshared (standalone file). Workset check not applicable.";
+                    result.Metrics["Workshared"] = false;
+                    result.Metrics["UserWorksetCount"] = 0;
+                    result.Items.Add(new CheckItem
+                    {
+                        Description = "Standalone (non-workshared) model. Worksets not required.",
+                        Severity = Severity.Info,
+                        Category = "Worksets"
+                    });
                     return result;
                 }
 
-                var worksets = new FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToWorksets();
-                int worksetCount = worksets.Count;
-                
+                var userWorksets = new FilteredWorksetCollector(doc)
+                    .OfKind(WorksetKind.UserWorkset)
+                    .ToWorksets()
+                    .ToList();
+
+                int worksetCount = userWorksets.Count;
                 var elementsPerWorkset = new Dictionary<WorksetId, int>();
-                foreach(var w in worksets) {
+
+                bool hasWorkset1 = false;
+                foreach (var w in userWorksets)
+                {
                     elementsPerWorkset[w.Id] = 0;
                     if (w.Name.Equals("Workset1", StringComparison.OrdinalIgnoreCase))
                     {
-                        result.Score -= 15;
-                        result.Items.Add(new CheckItem { Description = "Default 'Workset1' found and not renamed.", Severity = Severity.Warning, Category = "Workset" });
+                        hasWorkset1 = true;
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = "Default 'Workset1' found and not renamed to a project-specific workset.",
+                            Severity = Severity.Warning,
+                            Category = "Workset Naming"
+                        });
                     }
                 }
 
                 var allElements = new FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements();
-                int totalWorksharedElements = 0;
+                int totalElements = 0;
                 foreach (var e in allElements)
                 {
                     var wsId = e.WorksetId;
                     if (wsId != WorksetId.InvalidWorksetId && elementsPerWorkset.ContainsKey(wsId))
                     {
                         elementsPerWorkset[wsId]++;
-                        totalWorksharedElements++;
+                        totalElements++;
                     }
                 }
 
@@ -66,19 +87,23 @@ namespace BIMHealthCheck.Checkers
 
                 foreach (var kvp in elementsPerWorkset)
                 {
-                    var w = worksets.FirstOrDefault(x => x.Id == kvp.Key);
+                    var w = userWorksets.FirstOrDefault(x => x.Id == kvp.Key);
                     if (kvp.Value == 0)
                     {
                         emptyWorksetsCount++;
-                        result.Score -= 5;
-                        result.Items.Add(new CheckItem { Description = $"Empty Workset: {w?.Name}", Severity = Severity.Warning, Category = "Workset" });
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"Empty Workset: \"{w?.Name}\" (contains 0 model elements)",
+                            Severity = Severity.Info,
+                            Category = "Unused Workset"
+                        });
                     }
 
-                    if (totalWorksharedElements > 0)
+                    if (totalElements > 0)
                     {
-                        double pct = (double)kvp.Value / totalWorksharedElements;
+                        double pct = (double)kvp.Value / totalElements;
                         if (pct > largestPct) largestPct = pct;
-                        
+
                         if (w?.Name.Equals("Workset1", StringComparison.OrdinalIgnoreCase) == true)
                         {
                             workset1Pct = pct;
@@ -86,25 +111,56 @@ namespace BIMHealthCheck.Checkers
                     }
                 }
 
-                if (largestPct > 0.8)
+                // Realistic scoring:
+                // - Only 1 workset created in a workshared model: -10
+                // - Workset1 left unrenamed: -10
+                // - Empty worksets: -2 each (max -10)
+                // - Model placed entirely on a single workset (>95% when multiple worksets exist): -5
+                double deduction = 0;
+                if (worksetCount <= 1)
                 {
-                    result.Score -= 10;
-                    result.Items.Add(new CheckItem { Description = $"Unbalanced Worksets: One workset contains {largestPct:P1} of all elements.", Severity = Severity.Warning, Category = "Workset" });
+                    deduction += 10;
+                    result.Items.Add(new CheckItem
+                    {
+                        Description = "Model only has 1 user workset. Consider organizing elements across discipline worksets.",
+                        Severity = Severity.Warning,
+                        Category = "Workset Strategy"
+                    });
                 }
 
-                result.Score = Math.Max(0, result.Score);
-                
-                result.Metrics["WorksetCount"] = worksetCount;
-                result.Metrics["ElementsInWorkset1Pct"] = workset1Pct;
-                result.Metrics["EmptyWorksets"] = emptyWorksetsCount;
-                result.Metrics["LargestWorksetPct"] = largestPct;
+                if (hasWorkset1)
+                {
+                    deduction += 10;
+                }
 
-                result.Summary = $"Model is workshared with {worksetCount} user worksets.";
+                deduction += Math.Min(10, emptyWorksetsCount * 2.0);
+
+                if (worksetCount > 2 && largestPct > 0.95)
+                {
+                    deduction += 5;
+                    result.Items.Add(new CheckItem
+                    {
+                        Description = $"Over 95% of model elements are placed on a single workset ({largestPct:P0}).",
+                        Severity = Severity.Info,
+                        Category = "Distribution"
+                    });
+                }
+
+                result.Score = Math.Max(0, Math.Round(100.0 - Math.Min(100, deduction), 1));
+
+                result.Metrics["Workshared"] = true;
+                result.Metrics["UserWorksetCount"] = worksetCount;
+                result.Metrics["Workset1Present"] = hasWorkset1;
+                result.Metrics["ElementsInWorkset1Pct"] = $"{workset1Pct:P1}";
+                result.Metrics["EmptyWorksetsCount"] = emptyWorksetsCount;
+                result.Metrics["LargestWorksetRatio"] = $"{largestPct:P1}";
+
+                result.Summary = $"Workshared model with {worksetCount} user worksets (Workset1: {(hasWorkset1 ? "Present" : "Renamed")}, {emptyWorksetsCount} empty).";
             }
             catch (Exception ex)
             {
                 result.Score = 0;
-                result.Summary = $"Error during check: {ex.Message}";
+                result.Summary = $"Error during workset check: {ex.Message}";
                 result.Items.Add(new CheckItem { Description = ex.Message, Severity = Severity.Critical });
             }
 

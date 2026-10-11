@@ -8,14 +8,14 @@ A Revit add-in that checks a model for common health problems, gives it a 0–10
 
 | Checker | Weight | What it looks at |
 |---|---|---|
-| Warnings | 15% | Total warnings; extra penalty for serious ones (duplicate instances, unenclosed rooms/areas, overlaps) |
-| Model Metrics | 10% | Element, view, sheet, family counts and file size |
-| Unused Elements | 15% | Views not on sheets, unplaced rooms, unused view templates, family types with no instances |
-| CAD Imports | 15% | Imported vs. linked DWG/DXF (imports are penalised more) |
-| In-Place Families | 10% | Number of in-place families and their instances |
-| Worksets | 10% | Default "Workset1" still in use, empty worksets, one workset holding >80% of elements |
-| Naming Conventions | 15% | "Copy of" views, badly named levels/grids/families, overly long names |
-| Linked Files | 10% | Unpinned Revit links, links with many instances, too many link types |
+| Warnings & Classifications | 15% | All Revit warnings classified (Duplicate Elements, Rooms & Areas, Overlaps, Joins, Stairs, MEP, Analytical, Annotations) with failing Element IDs |
+| Model Scale & Metrics | 10% | Element, view, sheet, family counts and file size evaluated against industry scale benchmarks |
+| Unplaced & Unused Elements | 15% | Unplaced / unenclosed rooms (high priority), excessive unplaced working views, and unused templates |
+| CAD Imports & Links | 15% | Distinguishes dangerous unlinked CAD imports from managed/pinned CAD links |
+| In-Place Families | 10% | In-place families audit and instance counts across categories |
+| Workset Organization | 10% | Worksharing audit: "Workset1" renaming, empty worksets, and distribution |
+| Naming Standards & Cleanup | 15% | Pragmatic cleanup: flags copy artifacts (`Copy of`, `... - Copy`), abandoned `{3D - username}` views, and generic `Family1` names without penalizing standard Revit defaults |
+| Revit Links & Coordination | 10% | Unpinned link instances (displacement risk), unloaded links, and link types |
 
 ## Scoring
 
@@ -74,8 +74,9 @@ To uninstall, delete `BIMHealthCheck.addin` and the `BIMHealthCheck` folder from
 
 1. Open a model in Revit.
 2. Go to the **BIM Health** tab → **Analysis** panel → **Health Check**.
-3. Review the results; expand a checker to see its findings.
-4. Use **Export HTML Report** or **Export CSV** to save the results.
+3. Review the overall health score and expandable category cards.
+4. **Locate problem elements in Revit:** Click the **🔍 Show** button or **double-click** any row in the findings table to immediately select and zoom to those elements in your active Revit view!
+5. Use **Export HTML Report** or **Export CSV** to save and share the full audit.
 
 ## Project layout
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -124,7 +125,21 @@ namespace BIMHealthCheck.Reporting
                     sb.AppendLine("            <ul>");
                     foreach (var kvp in result.Metrics)
                     {
-                        sb.AppendLine($"                <li><strong>{kvp.Key}:</strong> {kvp.Value}</li>");
+                        if (kvp.Value is Dictionary<string, object> subDict)
+                        {
+                            sb.AppendLine($"                <li><strong>{kvp.Key}:</strong>");
+                            sb.AppendLine("                    <ul>");
+                            foreach (var sub in subDict)
+                            {
+                                sb.AppendLine($"                        <li>{System.Net.WebUtility.HtmlEncode(sub.Key)}: <strong>{System.Net.WebUtility.HtmlEncode(sub.Value?.ToString() ?? "")}</strong></li>");
+                            }
+                            sb.AppendLine("                    </ul>");
+                            sb.AppendLine("                </li>");
+                        }
+                        else
+                        {
+                            sb.AppendLine($"                <li><strong>{kvp.Key}:</strong> {System.Net.WebUtility.HtmlEncode(kvp.Value?.ToString() ?? "")}</li>");
+                        }
                     }
                     sb.AppendLine("            </ul>");
                 }
@@ -142,11 +157,15 @@ namespace BIMHealthCheck.Reporting
                     foreach (var item in sortedItems)
                     {
                         string badgeClass = GetBadgeClass(item.Severity);
+                        string elemDisplay = string.IsNullOrWhiteSpace(item.ElementId) 
+                            ? "-" 
+                            : $"<code>{System.Net.WebUtility.HtmlEncode(item.ElementId)}</code>";
+
                         sb.AppendLine("                <tr>");
                         sb.AppendLine($"                    <td><span class=\"badge {badgeClass}\">{item.Severity}</span></td>");
-                        sb.AppendLine($"                    <td>{item.Category}</td>");
-                        sb.AppendLine($"                    <td>{item.Description}</td>");
-                        sb.AppendLine($"                    <td>{item.ElementId}</td>");
+                        sb.AppendLine($"                    <td><strong>{System.Net.WebUtility.HtmlEncode(item.Category ?? "")}</strong></td>");
+                        sb.AppendLine($"                    <td>{System.Net.WebUtility.HtmlEncode(item.Description ?? "")}</td>");
+                        sb.AppendLine($"                    <td>{elemDisplay}</td>");
                         sb.AppendLine("                </tr>");
                     }
                     sb.AppendLine("                </tbody>");

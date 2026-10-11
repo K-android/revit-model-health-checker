@@ -8,14 +8,16 @@ using BIMHealthCheck.Engine;
 namespace BIMHealthCheck.Checkers
 {
     /// <summary>
-    /// Checks general model metrics such as file size and element counts.
+    /// Checks general model scale metrics such as file size and element counts against BIM industry benchmarks.
     /// </summary>
     public class ModelMetricsChecker : IHealthChecker
     {
         /// <summary> Gets the checker name. </summary>
         public string Name => "ModelMetricsChecker";
+
         /// <summary> Gets the checker display name. </summary>
-        public string DisplayName => "Model Metrics";
+        public string DisplayName => "Model Scale & Performance Metrics";
+
         /// <summary> Gets the checker weight. </summary>
         public double Weight => 0.10;
 
@@ -30,54 +32,64 @@ namespace BIMHealthCheck.Checkers
             try
             {
                 int elementCount = new FilteredElementCollector(doc).WhereElementIsNotElementType().GetElementCount();
-                
+
                 var views = new FilteredElementCollector(doc).OfClass(typeof(View)).Cast<View>().Where(v => !v.IsTemplate).ToList();
                 int viewCount = views.Count;
-                
+
                 int sheetCount = new FilteredElementCollector(doc).OfClass(typeof(ViewSheet)).GetElementCount();
                 int familyCount = new FilteredElementCollector(doc).OfClass(typeof(Family)).GetElementCount();
                 int familyTypeCount = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).GetElementCount();
-                
+
                 long fileSizeBytes = 0;
+                long mb = 0;
                 if (!string.IsNullOrEmpty(doc.PathName) && File.Exists(doc.PathName))
                 {
                     fileSizeBytes = new FileInfo(doc.PathName).Length;
+                    mb = fileSizeBytes / (1024 * 1024);
                 }
 
-                if (elementCount > 1000000) result.Score -= 40;
-                else if (elementCount > 500000) result.Score -= 20;
+                // Realistic industry thresholds for Autodesk Revit:
+                // - File size: Recommended < 300-500 MB per discipline model
+                double sizeDeduction = 0;
+                if (mb > 800) sizeDeduction = 25;
+                else if (mb > 500) sizeDeduction = 15;
+                else if (mb > 350) sizeDeduction = 5;
 
-                if (viewCount > 500) result.Score -= 20;
-                else if (viewCount > 200) result.Score -= 10;
+                // - Total elements: > 500k is huge
+                double elementDeduction = 0;
+                if (elementCount > 800000) elementDeduction = 20;
+                else if (elementCount > 500000) elementDeduction = 10;
 
-                if (familyCount > 1000) result.Score -= 30;
-                else if (familyCount > 500) result.Score -= 15;
+                // - Families count: > 1000 can cause cache bloat
+                double familyDeduction = 0;
+                if (familyCount > 1200) familyDeduction = 15;
+                else if (familyCount > 800) familyDeduction = 5;
 
-                long mb = fileSizeBytes / (1024 * 1024);
-                if (mb > 500) result.Score -= 20;
-                else if (mb > 200) result.Score -= 10;
-
-                result.Score = Math.Max(0, result.Score);
+                double totalDeduction = sizeDeduction + elementDeduction + familyDeduction;
+                result.Score = Math.Max(0, Math.Round(100.0 - totalDeduction, 1));
 
                 result.Metrics["ElementCount"] = elementCount;
                 result.Metrics["ViewCount"] = viewCount;
                 result.Metrics["SheetCount"] = sheetCount;
                 result.Metrics["FamilyCount"] = familyCount;
                 result.Metrics["FamilyTypeCount"] = familyTypeCount;
-                result.Metrics["FileSizeBytes"] = fileSizeBytes;
+                result.Metrics["FileSizeMB"] = mb > 0 ? $"{mb} MB" : "Unsaved / Cloud";
 
-                result.Items.Add(new CheckItem { Description = $"Total Elements: {elementCount}", Severity = Severity.Info, Category = "Metrics" });
-                result.Items.Add(new CheckItem { Description = $"Total Views: {viewCount}", Severity = Severity.Info, Category = "Metrics" });
-                result.Items.Add(new CheckItem { Description = $"Total Sheets: {sheetCount}", Severity = Severity.Info, Category = "Metrics" });
-                result.Items.Add(new CheckItem { Description = $"Total Families: {familyCount}", Severity = Severity.Info, Category = "Metrics" });
-                result.Items.Add(new CheckItem { Description = $"File Size: {mb} MB", Severity = Severity.Info, Category = "Metrics" });
+                result.Items.Add(new CheckItem { Description = $"Total Placed Elements: {elementCount:N0}", Severity = Severity.Info, Category = "Scale" });
+                result.Items.Add(new CheckItem { Description = $"Total Views: {viewCount:N0}", Severity = Severity.Info, Category = "Scale" });
+                result.Items.Add(new CheckItem { Description = $"Total Sheets: {sheetCount:N0}", Severity = Severity.Info, Category = "Scale" });
+                result.Items.Add(new CheckItem { Description = $"Loaded Families: {familyCount:N0} ({familyTypeCount:N0} types)", Severity = Severity.Info, Category = "Scale" });
+                if (mb > 0)
+                {
+                    result.Items.Add(new CheckItem { Description = $"Local File Size: {mb} MB", Severity = mb > 500 ? Severity.Warning : Severity.Info, Category = "Scale" });
+                }
 
-                result.Summary = $"Model contains {elementCount} elements, {viewCount} views, file size is {mb} MB.";
+                result.Summary = $"Model contains {elementCount:N0} elements across {viewCount} views and {familyCount} families. Size: {(mb > 0 ? mb + " MB" : "N/A")}.";
             }
             catch (Exception ex)
             {
                 result.Score = 0;
-                result.Summary = $"Error during check: {ex.Message}";
+                result.Summary = $"Error during model metrics check: {ex.Message}";
                 result.Items.Add(new CheckItem { Description = ex.Message, Severity = Severity.Critical });
             }
 
