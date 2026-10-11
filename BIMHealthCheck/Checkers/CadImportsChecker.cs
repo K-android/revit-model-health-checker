@@ -102,14 +102,45 @@ namespace BIMHealthCheck.Checkers
                     }
                 }
 
+                // Audit imported DWG layers in Object Styles
+                int totalDwgLayers = 0;
+                try
+                {
+                    foreach (Category rootCat in doc.Settings.Categories)
+                    {
+                        if (rootCat.Name.EndsWith(".dwg", StringComparison.OrdinalIgnoreCase) ||
+                            rootCat.Name.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (rootCat.SubCategories != null)
+                            {
+                                totalDwgLayers += rootCat.SubCategories.Size;
+                            }
+                        }
+                    }
+
+                    if (totalDwgLayers > 40)
+                    {
+                        result.Items.Add(new CheckItem
+                        {
+                            Description = $"DWG Layer Bloat: {totalDwgLayers} CAD layers currently embedded in Object Styles line styles & subcategories",
+                            Severity = Severity.Warning,
+                            Category = "DWG Layers"
+                        });
+                    }
+                }
+                catch { }
+
                 // Realistic scoring:
                 // - Model-wide imported CAD: -10 each (severe performance/cleanliness hazard)
                 // - View-specific imported CAD: -5 each
                 // - Unpinned linked CAD: -2 each
                 // - Pinned linked CAD: 0 deduction (it's standard BIM workflow!)
+                // - Excessive DWG layers (>40): -5
+                double layerDeduction = totalDwgLayers > 40 ? Math.Min(10, (totalDwgLayers - 40) * 0.1) : 0;
                 double deduction = (importedModelWide * 10.0)
                                  + (importedViewSpecific * 5.0)
-                                 + (linkedUnpinned * 2.0);
+                                 + (linkedUnpinned * 2.0)
+                                 + layerDeduction;
 
                 result.Score = Math.Max(0, Math.Round(100.0 - Math.Min(100, deduction), 1));
 
@@ -121,6 +152,7 @@ namespace BIMHealthCheck.Checkers
                 result.Metrics["ImportedCADViewSpecific"] = importedViewSpecific;
                 result.Metrics["LinkedCADPinned"] = linkedPinned;
                 result.Metrics["LinkedCADUnpinned"] = linkedUnpinned;
+                result.Metrics["EmbeddedDWGLayers"] = totalDwgLayers;
 
                 if (imports.Count == 0)
                 {

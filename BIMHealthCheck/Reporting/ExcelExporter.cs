@@ -6,66 +6,59 @@ using BIMHealthCheck.Engine;
 namespace BIMHealthCheck.Reporting
 {
     /// <summary>
-    /// Exports health check results to a CSV file without external dependencies.
+    /// Exports health check results, discipline scorecards, trends, and findings to CSV.
     /// </summary>
     public static class ExcelExporter
     {
-        /// <summary>
-        /// Exports the HealthScore to a CSV format file.
-        /// </summary>
-        /// <param name="healthScore">The health score results.</param>
-        /// <param name="filePath">The destination file path.</param>
         public static void ExportToCsv(HealthScore healthScore, string filePath)
         {
             using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
             using (var writer = new StreamWriter(stream, Encoding.UTF8))
             {
-                // Section 1: Header
-                writer.WriteLine("Model Name,Model Path,Timestamp,Overall Score,Grade");
-                writer.WriteLine($"{EscapeCsv(healthScore.ModelName)},{EscapeCsv(healthScore.ModelPath)},{EscapeCsv(healthScore.Timestamp.ToString("s"))},{healthScore.OverallScore:F2},{EscapeCsv(healthScore.Grade.ToString())}");
-                writer.WriteLine(); // Blank line
+                // Section 1: Project Scorecard Summary
+                writer.WriteLine("Project Health Scorecard Summary");
+                writer.WriteLine("Model Name,Model Path,Audit Date,Overall Score,Grade,Trend,Architecture Score,Structure Score,MEP Score,Coordination Score,Total Findings,Critical,Error,Warning,Info");
+                
+                string trendSummary = healthScore.Trend?.SummaryText ?? "Baseline run";
+                writer.WriteLine($"{EscapeCsv(healthScore.ModelName)},{EscapeCsv(healthScore.ModelPath)},{EscapeCsv(healthScore.Timestamp.ToString("s"))},{healthScore.OverallScore:F1},{EscapeCsv(healthScore.Grade.ToString())},{EscapeCsv(trendSummary)},{healthScore.ArchitectureScore:F1},{healthScore.StructureScore:F1},{healthScore.MepScore:F1},{healthScore.CoordinationScore:F1},{healthScore.TotalIssues},{healthScore.CriticalCount},{healthScore.ErrorCount},{healthScore.WarningCount},{healthScore.InfoCount}");
+                writer.WriteLine();
 
-                // Section 3: Category Scores
-                writer.WriteLine("Category Scores");
-                writer.WriteLine("Category,Score,Weight,Summary");
+                // Section 2: Category Breakdown
+                writer.WriteLine("Category Breakdown");
+                writer.WriteLine("Category Name,Score,Weight,Findings Count,Summary");
                 foreach (var result in healthScore.Results)
                 {
-                    writer.WriteLine($"{EscapeCsv(result.DisplayName)},{result.Score:F2},{result.Weight:F2},{EscapeCsv(result.Summary)}");
+                    writer.WriteLine($"{EscapeCsv(result.DisplayName)},{result.Score:F1},{result.Weight:F2},{result.Items.Count},{EscapeCsv(result.Summary)}");
                 }
-                writer.WriteLine(); // Blank line
+                writer.WriteLine();
 
-                // Section 5: Detailed Findings
-                writer.WriteLine("Detailed Findings");
-                writer.WriteLine("Category,Description,Severity,Element ID,Sub-Category");
-                
+                // Section 3: Detailed Findings
+                writer.WriteLine("Detailed Findings & Elements");
+                writer.WriteLine("Category,Severity,Sub-Category,Description,Element ID");
+
                 foreach (var result in healthScore.Results)
                 {
                     if (result.Items == null) continue;
 
                     foreach (var item in result.Items)
                     {
-                        writer.WriteLine($"{EscapeCsv(result.DisplayName)},{EscapeCsv(item.Description)},{EscapeCsv(item.Severity.ToString())},{EscapeCsv(item.ElementId)},{EscapeCsv(item.Category)}");
+                        writer.WriteLine($"{EscapeCsv(result.DisplayName)},{EscapeCsv(item.Severity.ToString())},{EscapeCsv(item.Category)},{EscapeCsv(item.Description)},{EscapeCsv(item.ElementId)}");
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// Escapes a string to conform to CSV formatting rules.
-        /// </summary>
         private static string EscapeCsv(string value)
         {
             if (string.IsNullOrEmpty(value)) return string.Empty;
-            
+
             bool containsQuotes = value.Contains("\"");
             bool containsCommas = value.Contains(",");
             bool containsNewlines = value.Contains("\n") || value.Contains("\r");
 
             if (containsQuotes || containsCommas || containsNewlines)
             {
-                // Double up internal quotes
                 value = value.Replace("\"", "\"\"");
-                // Wrap in quotes
                 return $"\"{value}\"";
             }
 

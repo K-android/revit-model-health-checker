@@ -1,12 +1,13 @@
-using Autodesk.Revit.DB;
-using BIMHealthCheck.Checkers;
 using System;
 using System.Collections.Generic;
+using Autodesk.Revit.DB;
+using BIMHealthCheck.Checkers;
 
 namespace BIMHealthCheck.Engine
 {
     /// <summary>
-    /// Orchestrator class that runs all health checks and computes the final score.
+    /// Orchestrator class that executes all comprehensive health checkers,
+    /// computes discipline scorecards, and computes historical trends.
     /// </summary>
     public class HealthCheckEngine
     {
@@ -14,25 +15,32 @@ namespace BIMHealthCheck.Engine
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HealthCheckEngine"/> class
-        /// and registers all health checkers.
+        /// and registers all industry-standard health checkers.
         /// </summary>
         public HealthCheckEngine()
         {
             _checkers = new List<IHealthChecker>
             {
                 new WarningsChecker(),
-                new ModelMetricsChecker(),
-                new UnusedElementsChecker(),
+                new RoomAndTagHealthChecker(),
+                new DuplicateMarksChecker(),
                 new CadImportsChecker(),
+                new ModelGroupsChecker(),
                 new InPlaceFamiliesChecker(),
+                new GenericModelAbuseChecker(),
+                new FamilyHealthChecker(),
                 new WorksetChecker(),
                 new NamingConventionChecker(),
-                new LinkedFilesChecker()
+                new LinkedFilesChecker(),
+                new SharedParameterChecker(),
+                new UnusedElementsChecker(),
+                new ModelMetricsChecker()
             };
         }
 
         /// <summary>
         /// Runs all registered health checks against the provided document.
+        /// Computes overall score, discipline scorecards, and historical trends.
         /// </summary>
         /// <param name="doc">The active Revit document.</param>
         /// <returns>A comprehensive HealthScore object.</returns>
@@ -69,7 +77,13 @@ namespace BIMHealthCheck.Engine
                 }
             }
 
+            // Compute overall weighted score and discipline scores
             score.ComputeOverallScore();
+
+            // Compute and record historical trend
+            score.Trend = HistoryManager.ComputeTrend(score.ModelName, score.OverallScore, score.Timestamp);
+            HistoryManager.SaveSnapshot(score);
+
             return score;
         }
     }

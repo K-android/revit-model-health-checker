@@ -20,29 +20,27 @@ namespace BIMHealthCheck.UI
 {
     /// <summary>
     /// Interaction logic for HealthCheckDialog.xaml.
-    /// Provides interactive inspection, category scoring, and Revit element selection/zoom.
+    /// Provides interactive inspection, category scoring, discipline scorecards,
+    /// severity filtering, historical trends, and Revit element selection/zoom.
     /// </summary>
     public partial class HealthCheckDialog : Window
     {
         private readonly HealthScore _healthScore;
         private readonly UIDocument _uidoc;
+        private Severity? _currentSeverityFilter = null;
+        private readonly List<(CheckResult Result, DataGrid Grid, Expander Card)> _categoryViews = new List<(CheckResult, DataGrid, Expander)>();
 
-        /// <summary>
-        /// Initializes dialog with health score.
-        /// </summary>
         public HealthCheckDialog(HealthScore healthScore) : this(healthScore, null)
         {
         }
 
-        /// <summary>
-        /// Initializes dialog with health score and active UIDocument for element interaction.
-        /// </summary>
         public HealthCheckDialog(HealthScore healthScore, UIDocument uidoc)
         {
             _healthScore = healthScore;
             _uidoc = uidoc;
             InitializeComponent();
             AttachToRevitWindow();
+            PopulateScorecard();
             PopulateResults();
         }
 
@@ -56,26 +54,78 @@ namespace BIMHealthCheck.UI
                     new WindowInteropHelper(this).Owner = handle;
                 }
             }
-            catch
-            {
-                // Silently continue if window handle cannot be attached
-            }
+            catch { }
         }
 
-        private void PopulateResults()
+        private void PopulateScorecard()
         {
-            // Set header values
+            // Header info
             ModelNameText.Text = _healthScore.ModelName ?? "Current Model";
             ModelPathText.Text = _healthScore.ModelPath ?? "(Unsaved Model)";
             ScoreText.Text = _healthScore.OverallScore.ToString("F0");
             GradeText.Text = _healthScore.Grade.ToString();
 
-            // Set score color
             var scoreColor = GetScoreColor(_healthScore.OverallScore);
             ScoreBorder.Background = scoreColor;
             GradeText.Foreground = scoreColor;
 
-            // Populate checker result cards
+            // Trend Badge
+            if (_healthScore.Trend != null && _healthScore.Trend.HasHistory)
+            {
+                double delta = _healthScore.Trend.DeltaScore;
+                if (delta > 0)
+                {
+                    TrendText.Text = $"📈 {_healthScore.Trend.SummaryText}";
+                    TrendBadgeBorder.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(232, 245, 233));
+                    TrendText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(46, 125, 50));
+                }
+                else if (delta < 0)
+                {
+                    TrendText.Text = $"📉 {_healthScore.Trend.SummaryText}";
+                    TrendBadgeBorder.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 235, 238));
+                    TrendText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(198, 40, 40));
+                }
+                else
+                {
+                    TrendText.Text = $"📊 {_healthScore.Trend.SummaryText}";
+                    TrendBadgeBorder.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(245, 245, 245));
+                    TrendText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(80, 80, 80));
+                }
+            }
+            else
+            {
+                TrendText.Text = "📊 Baseline run (tracking active)";
+                TrendBadgeBorder.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(237, 242, 247));
+                TrendText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(74, 85, 104));
+            }
+
+            // Discipline Scores
+            SetDisciplineCard(ArchScoreText, _healthScore.ArchitectureScore);
+            SetDisciplineCard(StructScoreText, _healthScore.StructureScore);
+            SetDisciplineCard(MepScoreText, _healthScore.MepScore);
+            SetDisciplineCard(CoordScoreText, _healthScore.CoordinationScore);
+
+            // Filter button badges
+            FilterAllBtn.Content = $"All ({_healthScore.TotalIssues})";
+            FilterCriticalBtn.Content = $"🔴 Critical ({_healthScore.CriticalCount})";
+            FilterErrorBtn.Content = $"🟠 Error ({_healthScore.ErrorCount})";
+            FilterWarningBtn.Content = $"🟡 Warning ({_healthScore.WarningCount})";
+            FilterInfoBtn.Content = $"🔵 Info ({_healthScore.InfoCount})";
+
+            HighlightActiveFilterButton(FilterAllBtn);
+        }
+
+        private void SetDisciplineCard(TextBlock textBlock, double score)
+        {
+            textBlock.Text = $"{score:F0} / 100";
+            textBlock.Foreground = GetScoreColor(score);
+        }
+
+        private void PopulateResults()
+        {
+            ResultsPanel.Children.Clear();
+            _categoryViews.Clear();
+
             foreach (var result in _healthScore.Results)
             {
                 var card = CreateResultCard(result);
@@ -91,11 +141,10 @@ namespace BIMHealthCheck.UI
                 Background = System.Windows.Media.Brushes.White,
                 BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(224, 224, 224)),
                 BorderThickness = new Thickness(1),
-                IsExpanded = result.Score < 80 // Automatically expand categories that need attention!
+                IsExpanded = result.Score < 85 // Expand categories with items to address
             };
 
-            // Header grid
-            var headerGrid = new Grid { Margin = new Thickness(5, 5, 5, 5) };
+            var headerGrid = new Grid { Margin = new Thickness(5) };
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -135,10 +184,8 @@ namespace BIMHealthCheck.UI
 
             expander.Header = headerGrid;
 
-            // Content panel
             var contentPanel = new StackPanel { Margin = new Thickness(15) };
 
-            // Progress bar
             var progressBar = new ProgressBar
             {
                 Height = 8,
@@ -151,7 +198,6 @@ namespace BIMHealthCheck.UI
             };
             contentPanel.Children.Add(progressBar);
 
-            // Summary
             var summaryText = new TextBlock
             {
                 Text = result.Summary,
@@ -161,7 +207,7 @@ namespace BIMHealthCheck.UI
             };
             contentPanel.Children.Add(summaryText);
 
-            // Metrics key-value display
+            // Metrics badges
             if (result.Metrics != null && result.Metrics.Count > 0)
             {
                 var metricsWrap = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
@@ -169,7 +215,6 @@ namespace BIMHealthCheck.UI
                 {
                     if (kvp.Value is Dictionary<string, object> dict)
                     {
-                        // Render nested dictionary items
                         foreach (var sub in dict)
                         {
                             metricsWrap.Children.Add(CreateMetricBadge($"{kvp.Key}: {sub.Key}", sub.Value?.ToString()));
@@ -200,7 +245,7 @@ namespace BIMHealthCheck.UI
 
                 var tipText = new TextBlock
                 {
-                    Text = "Double-click row or click 'Show' to zoom to element",
+                    Text = "Double-click row or click 'Show' to zoom in Revit",
                     FontStyle = FontStyles.Italic,
                     FontSize = 11,
                     Foreground = System.Windows.Media.Brushes.Gray,
@@ -254,7 +299,6 @@ namespace BIMHealthCheck.UI
                     Width = new DataGridLength(110)
                 });
 
-                // Action Column: "🔍 Show" button
                 var actionCol = new DataGridTemplateColumn
                 {
                     Header = "Locate",
@@ -272,8 +316,7 @@ namespace BIMHealthCheck.UI
                 btnFactory.SetBinding(Button.TagProperty, new Binding("ElementId"));
                 btnFactory.AddHandler(Button.ClickEvent, new RoutedEventHandler(OnShowElementButtonClick));
 
-                var cellTemplate = new DataTemplate { VisualTree = btnFactory };
-                actionCol.CellTemplate = cellTemplate;
+                actionCol.CellTemplate = new DataTemplate { VisualTree = btnFactory };
                 itemsGrid.Columns.Add(actionCol);
 
                 itemsGrid.MouseDoubleClick += (s, e) =>
@@ -284,10 +327,10 @@ namespace BIMHealthCheck.UI
                     }
                 };
 
-                var sortedItems = result.Items.OrderByDescending(i => i.Severity).ToList();
-                itemsGrid.ItemsSource = sortedItems;
-
+                itemsGrid.ItemsSource = result.Items.OrderByDescending(i => i.Severity).ToList();
                 contentPanel.Children.Add(itemsGrid);
+
+                _categoryViews.Add((result, itemsGrid, expander));
             }
             else
             {
@@ -303,6 +346,75 @@ namespace BIMHealthCheck.UI
 
             expander.Content = contentPanel;
             return expander;
+        }
+
+        private void OnSeverityFilterClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string tagStr)
+            {
+                if (tagStr.Equals("All", StringComparison.OrdinalIgnoreCase))
+                {
+                    _currentSeverityFilter = null;
+                }
+                else if (Enum.TryParse(tagStr, out Severity sev))
+                {
+                    _currentSeverityFilter = sev;
+                }
+
+                HighlightActiveFilterButton(btn);
+                ApplySeverityFilter();
+            }
+        }
+
+        private void HighlightActiveFilterButton(Button activeBtn)
+        {
+            var buttons = new[] { FilterAllBtn, FilterCriticalBtn, FilterErrorBtn, FilterWarningBtn, FilterInfoBtn };
+            foreach (var b in buttons)
+            {
+                if (b == null) continue;
+                if (b == activeBtn)
+                {
+                    b.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 215));
+                    b.Foreground = System.Windows.Media.Brushes.White;
+                }
+                else
+                {
+                    b.Background = System.Windows.Media.Brushes.White;
+                    b.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(68, 68, 68));
+                }
+            }
+        }
+
+        private void ApplySeverityFilter()
+        {
+            foreach (var (result, grid, expander) in _categoryViews)
+            {
+                if (_currentSeverityFilter == null)
+                {
+                    // Show all items
+                    grid.ItemsSource = result.Items.OrderByDescending(i => i.Severity).ToList();
+                    expander.Visibility = System.Windows.Visibility.Visible;
+                    expander.IsExpanded = result.Score < 85;
+                }
+                else
+                {
+                    var filtered = result.Items.Where(i => i.Severity == _currentSeverityFilter.Value).ToList();
+                    grid.ItemsSource = filtered;
+                    if (filtered.Count > 0)
+                    {
+                        expander.Visibility = System.Windows.Visibility.Visible;
+                        expander.IsExpanded = true;
+                    }
+                    else
+                    {
+                        // Hide categories with 0 items for selected severity
+                        expander.Visibility = System.Windows.Visibility.Collapsed;
+                    }
+                }
+            }
+
+            string filterName = _currentSeverityFilter?.ToString() ?? "All";
+            SetStatus($"Filtered view: Showing {filterName} findings across categories.", false);
         }
 
         private Border CreateMetricBadge(string key, string value)

@@ -4,22 +4,35 @@ A Revit add-in that checks a model for common health problems, gives it a 0–10
 
 **Supported versions:** Revit 2024 (.NET Framework 4.8), Revit 2025 and 2026 (.NET 8). All three are built from the same code.
 
-## Health checks
+## One-Click Project Scorecard & Features
 
-| Checker | Weight | What it looks at |
-|---|---|---|
-| Warnings & Classifications | 15% | All Revit warnings classified (Duplicate Elements, Rooms & Areas, Overlaps, Joins, Stairs, MEP, Analytical, Annotations) with failing Element IDs |
-| Model Scale & Metrics | 10% | Element, view, sheet, family counts and file size evaluated against industry scale benchmarks |
-| Unplaced & Unused Elements | 15% | Unplaced / unenclosed rooms (high priority), excessive unplaced working views, and unused templates |
-| CAD Imports & Links | 15% | Distinguishes dangerous unlinked CAD imports from managed/pinned CAD links |
-| In-Place Families | 10% | In-place families audit and instance counts across categories |
-| Workset Organization | 10% | Worksharing audit: "Workset1" renaming, empty worksets, and distribution |
-| Naming Standards & Cleanup | 15% | Pragmatic cleanup: flags copy artifacts (`Copy of`, `... - Copy`), abandoned `{3D - username}` views, and generic `Family1` names without penalizing standard Revit defaults |
-| Revit Links & Coordination | 10% | Unpinned link instances (displacement risk), unloaded links, and link types |
+- **Discipline Health Scores:** Instant health breakdown across **Architecture**, **Structure**, **MEP Systems**, and **BIM Coordination**.
+- **Historical Trends:** Tracks progress over time (e.g. `📈 +6.5 pts improvement vs last week`), saving run history to `%APPDATA%\BIMHealthCheck\history\`.
+- **Severity Levels & Filtering:** Findings are tagged by severity (**🔴 Critical**, **🟠 Error**, **🟡 Warning**, **🔵 Info**) with interactive filter pills in the UI.
+- **Click-to-Zoom Navigation:** Click the **🔍 Show** button or double-click any row to highlight and zoom to that element in your active Revit view.
 
-## Scoring
+## Health checks (14 Specialized Audits)
 
-Each checker scores 0–100; the overall score is the weighted average.
+| Checker | What it looks at |
+|---|---|
+| **Warnings & Classifications** | All Revit warnings classified (Duplicate Elements, Rooms & Areas, Overlaps, Joins, Stairs, MEP, Analytical, Annotations) with failing Element IDs |
+| **Rooms & Tag Integrity** | Duplicate room numbers, unenclosed rooms (`Area == 0`), unplaced rooms, and orphaned/unhosted tags |
+| **Duplicate Mark Values** | Identical Mark parameter values across doors, windows, mechanical/electrical equipment, and fixtures |
+| **CAD Imports & DWG Layer Audit** | Detects unlinked CAD imports, model-wide imports, and CAD layer pollution in Object Styles |
+| **Model Groups & Performance** | Single-instance group types (database bloat), unused group types, and high-count groups |
+| **In-Place Families Audit** | Detects in-place families and counts their placed instances |
+| **Generic Model Categorization** | Flags excessive Generic Models abuse bypassing proper BIM scheduling and IFC categories |
+| **Family Health & Geometry** | Families with bloated type counts (>35 types), DirectShape elements, and heavy imported meshes |
+| **Workset Organization** | Unrenamed default "Workset1", empty worksets, and element distribution across worksets |
+| **Naming Standards & Cleanup** | Copy artifacts (`Copy of`, `... - Copy`), abandoned `{3D - username}` user views, and generic `Family1` names |
+| **Revit Links & Coordination** | Unpinned link instances (risk of accidental shift), unloaded/missing links, and nested links |
+| **Parameters & Compliance** | Scans project & shared parameter bindings for duplicate/conflicting parameter names |
+| **Unreferenced Views & Templates** | Unreferenced views not placed on sheets and unused view templates |
+| **Model Scale & Metrics** | Overall element counts, view counts, family counts, and file size against industry scale benchmarks |
+
+## Scoring & Grades
+
+Each checker scores 0–100; overall health is calculated via weighted average:
 
 - 🟢 **80–100** Healthy
 - 🟡 **60–79** Needs attention
