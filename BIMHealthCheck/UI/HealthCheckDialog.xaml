@@ -4,10 +4,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="BIM Model Health Scorecard &amp; Audit" 
-        Height="780" Width="1020" 
+        Title="BIM Model Health Hub" 
+        Height="780" Width="1120" 
+        MinHeight="650" MinWidth="950"
         WindowStartupLocation="CenterScreen"
-        Background="#F5F6F8"
+        Background="#F8FAFC"
         FontFamily="Segoe UI">
 
     <Window.Resources>
@@ -15,27 +16,28 @@
         <Style TargetType="ScrollViewer">
             <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
             <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
-            <Setter Property="Padding" Value="0,0,10,0"/>
+            <Setter Property="Padding" Value="0,0,5,0"/>
         </Style>
 
-        <!-- Modern Button Style -->
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="#0078D7"/>
+        <!-- Primary Action Button -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#2563EB"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Padding" Value="14,7"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Margin" Value="4"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#005A9E"/>
+                                <Setter Property="Background" Value="#1D4ED8"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -43,18 +45,29 @@
             </Setter>
         </Style>
 
-        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#E1E1E1"/>
-            <Setter Property="Foreground" Value="#333333"/>
+        <!-- Secondary Button -->
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#334155"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="4"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#CCCCCC"/>
+                                <Setter Property="Background" Value="#F1F5F9"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -62,14 +75,47 @@
             </Setter>
         </Style>
 
-        <!-- Filter Pill Style -->
+        <!-- Small Magnifying Glass Locate Button -->
+        <Style x:Key="LocateGlassButton" TargetType="Button">
+            <Setter Property="Background" Value="#EFF6FF"/>
+            <Setter Property="Foreground" Value="#2563EB"/>
+            <Setter Property="BorderBrush" Value="#BFDBFE"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTip" Value="Locate &amp; Zoom to Element in Revit"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="4">
+                            <TextBlock Text="🔍" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#2563EB"/>
+                                <Setter Property="BorderBrush" Value="#1D4ED8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Severity Pill Style -->
         <Style x:Key="FilterPillButton" TargetType="Button">
             <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#444444"/>
-            <Setter Property="BorderBrush" Value="#D0D5DD"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -85,8 +131,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#EBF3FB"/>
-                                <Setter Property="BorderBrush" Value="#0078D7"/>
+                                <Setter Property="Background" Value="#F1F5F9"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -102,121 +147,409 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header: Scorecard & Discipline Breakdown -->
-        <Border Grid.Row="0" Background="White" Padding="20,16" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
-            <StackPanel>
-                <!-- Top Row: Project Title + Trend + Overall Score -->
-                <Grid Margin="0,0,0,14">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="ONE-CLICK PROJECT SCORECARD" FontSize="11" FontWeight="Bold" Foreground="#0078D7" Margin="0,0,10,0"/>
-                            <Border x:Name="TrendBadgeBorder" Background="#E8F5E9" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                                <TextBlock x:Name="TrendText" Text="📊 Baseline run" FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32"/>
-                            </Border>
-                        </StackPanel>
-                        <TextBlock x:Name="ModelNameText" FontSize="20" FontWeight="Bold" Foreground="#222222" Margin="0,4,0,2" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock x:Name="ModelPathText" FontSize="11" Foreground="#777777" TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <StackPanel VerticalAlignment="Center" Margin="0,0,14,0" HorizontalAlignment="Right">
-                            <TextBlock Text="Overall Health" FontSize="12" Foreground="#666666" HorizontalAlignment="Right"/>
-                            <TextBlock x:Name="GradeText" FontSize="17" FontWeight="Bold" HorizontalAlignment="Right"/>
-                        </StackPanel>
-
-                        <Border x:Name="ScoreBorder" Width="72" Height="72" CornerRadius="36" Background="#27AE60" 
-                                HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock x:Name="ScoreText" FontSize="26" FontWeight="Bold" Foreground="White" 
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </StackPanel>
-                </Grid>
-
-                <!-- Second Row: Discipline Scorecards Grid -->
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Architecture Card -->
-                    <Border Grid.Column="0" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,6,0">
-                        <StackPanel>
-                            <TextBlock Text="🏛 Architecture" FontSize="11" FontWeight="SemiBold" Foreground="#4B5563"/>
-                            <TextBlock x:Name="ArchScoreText" Text="-- / 100" FontSize="16" FontWeight="Bold" Foreground="#111827" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Structure Card -->
-                    <Border Grid.Column="1" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,6,0">
-                        <StackPanel>
-                            <TextBlock Text="🏗 Structure" FontSize="11" FontWeight="SemiBold" Foreground="#4B5563"/>
-                            <TextBlock x:Name="StructScoreText" Text="-- / 100" FontSize="16" FontWeight="Bold" Foreground="#111827" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- MEP Card -->
-                    <Border Grid.Column="2" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,6,0">
-                        <StackPanel>
-                            <TextBlock Text="⚡ MEP Systems" FontSize="11" FontWeight="SemiBold" Foreground="#4B5563"/>
-                            <TextBlock x:Name="MepScoreText" Text="-- / 100" FontSize="16" FontWeight="Bold" Foreground="#111827" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Coordination Card -->
-                    <Border Grid.Column="3" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="12,8">
-                        <StackPanel>
-                            <TextBlock Text="🌐 Coordination" FontSize="11" FontWeight="SemiBold" Foreground="#4B5563"/>
-                            <TextBlock x:Name="CoordScoreText" Text="-- / 100" FontSize="16" FontWeight="Bold" Foreground="#111827" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-
-                <!-- Third Row: Severity Level Filter Bar -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Severity Filter:" FontSize="11" FontWeight="SemiBold" Foreground="#666666" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <Button x:Name="FilterAllBtn" Style="{StaticResource FilterPillButton}" Content="All (0)" Click="OnSeverityFilterClick" Tag="All"/>
-                    <Button x:Name="FilterCriticalBtn" Style="{StaticResource FilterPillButton}" Content="🔴 Critical (0)" Click="OnSeverityFilterClick" Tag="Critical"/>
-                    <Button x:Name="FilterErrorBtn" Style="{StaticResource FilterPillButton}" Content="🟠 Error (0)" Click="OnSeverityFilterClick" Tag="Error"/>
-                    <Button x:Name="FilterWarningBtn" Style="{StaticResource FilterPillButton}" Content="🟡 Warning (0)" Click="OnSeverityFilterClick" Tag="Warning"/>
-                    <Button x:Name="FilterInfoBtn" Style="{StaticResource FilterPillButton}" Content="🔵 Info (0)" Click="OnSeverityFilterClick" Tag="Info"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
-        <!-- Main Content: Category Findings Cards -->
-        <ScrollViewer Grid.Row="1" Margin="20,15,20,15">
-            <StackPanel x:Name="ResultsPanel">
-                <!-- Dynamically populated in code-behind -->
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- Footer / Action Bar -->
-        <Border Grid.Row="2" Background="White" Padding="16,10" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+        <!-- Top Navigation Bar -->
+        <Border Grid.Row="0" Background="#FFFFFF" Padding="18,12" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="Export HTML Report" Click="ExportHtmlButton_Click"/>
-                        <Button Content="Export CSV" Style="{StaticResource SecondaryButton}" Click="ExportCsvButton_Click"/>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#2563EB" CornerRadius="8" Width="36" Height="36" Margin="0,0,12,0">
+                        <TextBlock Text="🏥" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="BIM HEALTH HUB" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,8,0"/>
+                            <Border x:Name="TrendBadgeBorder" Background="#ECFDF5" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                <TextBlock x:Name="TrendText" Text="📊 Baseline run" FontSize="11" FontWeight="SemiBold" Foreground="#047857"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock x:Name="ModelPathText" FontSize="11" Foreground="#64748B" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                     </StackPanel>
-                    <TextBlock x:Name="StatusMessageText" 
-                               Text="💡 Tip: Click '🔍 Show' or double-click any row to highlight and zoom to that element in Revit." 
-                               FontSize="11" Foreground="#444444" Margin="5,4,0,0" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
 
-                <Button Grid.Column="1" Content="Close" Style="{StaticResource SecondaryButton}" Click="CloseButton_Click" MinWidth="100" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Export HTML Report" Style="{StaticResource PrimaryButton}" Click="ExportHtmlButton_Click"/>
+                    <Button Content="Export CSV" Style="{StaticResource SecondaryButton}" Click="ExportCsvButton_Click"/>
+                    <Button Content="Close" Style="{StaticResource SecondaryButton}" Click="CloseButton_Click" MinWidth="75"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Body: Sidebar + Detail Pane -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="290"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Sidebar Navigation -->
+            <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Scorecard Hero Tab Button -->
+                    <Border Grid.Row="0" x:Name="ScorecardNavCard" Margin="12,12,12,6" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12" Cursor="Hand" MouseLeftButtonDown="OnScorecardNavClick">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="EXECUTIVE DASHBOARD" FontSize="10" FontWeight="Bold" Foreground="#2563EB" Margin="0,0,0,2"/>
+                                <TextBlock Text="Project Scorecard" FontSize="14" FontWeight="Bold" Foreground="#1E293B"/>
+                                <TextBlock x:Name="SidebarGradeText" Text="Healthy" FontSize="12" FontWeight="SemiBold" Foreground="#16A34A" Margin="0,2,0,0"/>
+                            </StackPanel>
+
+                            <Border Grid.Column="1" x:Name="SidebarScoreBorder" Width="44" Height="44" CornerRadius="22" Background="#16A34A" VerticalAlignment="Center">
+                                <TextBlock x:Name="SidebarScoreText" Text="88" FontSize="18" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- Category Section Header -->
+                    <Border Grid.Row="1" Padding="16,8,16,4">
+                        <TextBlock Text="AUDIT CATEGORIES" FontSize="10" FontWeight="Bold" Foreground="#94A3B8"/>
+                    </Border>
+
+                    <!-- Category List Box -->
+                    <ScrollViewer Grid.Row="2">
+                        <ListBox x:Name="CategoryListBox" BorderThickness="0" Background="Transparent" 
+                                 SelectionChanged="OnCategorySelectionChanged" Margin="6,0,6,6">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="10,8"/>
+                                    <Setter Property="Margin" Value="0,2"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="ItemBorder" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#F1F5F9"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#E2E8F0"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- Right Detail Workspace -->
+            <Grid Grid.Column="1" Background="#F8FAFC">
+                <!-- 1. Executive Scorecard View -->
+                <ScrollViewer x:Name="ScorecardView" Visibility="Visible" Margin="20,15,20,15">
+                    <StackPanel>
+                        <!-- Top Hero: Donut + Discipline Cards -->
+                        <Border Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="20" Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Top Score & Model Stats -->
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Circular Donut Gauge -->
+                                    <Border Grid.Column="0" x:Name="HeroScoreBorder" Width="100" Height="100" CornerRadius="50" Background="#16A34A" Margin="0,0,25,0" VerticalAlignment="Center">
+                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                            <TextBlock x:Name="HeroScoreText" Text="88" FontSize="32" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="/ 100" FontSize="11" Foreground="#DCFCE7" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Model Info & Overall Summary -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock x:Name="ModelNameText" FontSize="20" FontWeight="Bold" Foreground="#1E293B" TextTrimming="CharacterEllipsis"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+                                            <TextBlock Text="Overall Status: " FontSize="13" Foreground="#64748B"/>
+                                            <TextBlock x:Name="HeroGradeText" Text="Healthy" FontSize="13" FontWeight="Bold" Foreground="#16A34A" Margin="0,0,15,0"/>
+                                            <TextBlock x:Name="HeroTrendSummaryText" Text="📈 +6.5 pts vs previous run" FontSize="12" Foreground="#047857" FontWeight="SemiBold"/>
+                                        </StackPanel>
+
+                                        <!-- Quick Stats Row -->
+                                        <WrapPanel x:Name="HeroStatsPanel" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Discipline Scorecard Cards -->
+                                <Grid Grid.Row="1" Margin="0,20,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Architecture -->
+                                    <Border Grid.Column="0" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,8,0">
+                                        <StackPanel>
+                                            <TextBlock Text="🏛 Architecture" FontSize="11" FontWeight="SemiBold" Foreground="#64748B"/>
+                                            <TextBlock x:Name="ArchScoreText" Text="88" FontSize="22" FontWeight="Bold" Foreground="#1E293B" Margin="0,4,0,2"/>
+                                            <ProgressBar x:Name="ArchProgress" Height="4" Value="88" Foreground="#16A34A" Background="#E2E8F0" BorderThickness="0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Structure -->
+                                    <Border Grid.Column="1" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,8,0">
+                                        <StackPanel>
+                                            <TextBlock Text="🏗 Structure" FontSize="11" FontWeight="SemiBold" Foreground="#64748B"/>
+                                            <TextBlock x:Name="StructScoreText" Text="92" FontSize="22" FontWeight="Bold" Foreground="#1E293B" Margin="0,4,0,2"/>
+                                            <ProgressBar x:Name="StructProgress" Height="4" Value="92" Foreground="#16A34A" Background="#E2E8F0" BorderThickness="0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- MEP -->
+                                    <Border Grid.Column="2" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,8,0">
+                                        <StackPanel>
+                                            <TextBlock Text="⚡ MEP Systems" FontSize="11" FontWeight="SemiBold" Foreground="#64748B"/>
+                                            <TextBlock x:Name="MepScoreText" Text="82" FontSize="22" FontWeight="Bold" Foreground="#1E293B" Margin="0,4,0,2"/>
+                                            <ProgressBar x:Name="MepProgress" Height="4" Value="82" Foreground="#16A34A" Background="#E2E8F0" BorderThickness="0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Coordination -->
+                                    <Border Grid.Column="3" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12">
+                                        <StackPanel>
+                                            <TextBlock Text="🌐 Coordination" FontSize="11" FontWeight="SemiBold" Foreground="#64748B"/>
+                                            <TextBlock x:Name="CoordScoreText" Text="85" FontSize="22" FontWeight="Bold" Foreground="#1E293B" Margin="0,4,0,2"/>
+                                            <ProgressBar x:Name="CoordProgress" Height="4" Value="85" Foreground="#16A34A" Background="#E2E8F0" BorderThickness="0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Severity Summary Cards (Clickable) -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,8,0" Cursor="Hand" MouseLeftButtonDown="OnSevCardClick" Tag="Critical">
+                                <StackPanel>
+                                    <TextBlock Text="🔴 Critical Issues" FontSize="11" FontWeight="Bold" Foreground="#B91C1C"/>
+                                    <TextBlock x:Name="CriticalCountText" Text="0" FontSize="20" FontWeight="Bold" Foreground="#991B1B" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,8,0" Cursor="Hand" MouseLeftButtonDown="OnSevCardClick" Tag="Error">
+                                <StackPanel>
+                                    <TextBlock Text="🟠 Errors" FontSize="11" FontWeight="Bold" Foreground="#B45309"/>
+                                    <TextBlock x:Name="ErrorCountText" Text="0" FontSize="20" FontWeight="Bold" Foreground="#92400E" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="2" Background="#FEFCE8" BorderBrush="#FEF08A" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,8,0" Cursor="Hand" MouseLeftButtonDown="OnSevCardClick" Tag="Warning">
+                                <StackPanel>
+                                    <TextBlock Text="🟡 Warnings" FontSize="11" FontWeight="Bold" Foreground="#A16207"/>
+                                    <TextBlock x:Name="WarningCountText" Text="0" FontSize="20" FontWeight="Bold" Foreground="#854D0E" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="3" Background="#F0F9FF" BorderBrush="#BAE6FD" BorderThickness="1" CornerRadius="8" Padding="12" Cursor="Hand" MouseLeftButtonDown="OnSevCardClick" Tag="Info">
+                                <StackPanel>
+                                    <TextBlock Text="🔵 Info Notices" FontSize="11" FontWeight="Bold" Foreground="#0369A1"/>
+                                    <TextBlock x:Name="InfoCountText" Text="0" FontSize="20" FontWeight="Bold" Foreground="#075985" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Top Action Items Section -->
+                        <Border Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="20">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Top Priority Findings Requiring Action" FontSize="15" FontWeight="Bold" Foreground="#1E293B"/>
+                                        <TextBlock Text="Click 🔍 to locate elements in Revit or double-click any row." FontSize="11" Foreground="#64748B" Margin="0,2,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Column="1" x:Name="ScorecardIssuesSummaryText" Text="Showing top issues" FontSize="12" Foreground="#64748B" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <DataGrid x:Name="TopIssuesGrid" AutoGenerateColumns="False" IsReadOnly="True" 
+                                          HeadersVisibility="Column" Background="White" RowBackground="White"
+                                          AlternatingRowBackground="#F8FAFC" GridLinesVisibility="Horizontal"
+                                          HorizontalGridLinesBrush="#F1F5F9" MaxHeight="320" SelectionMode="Single"
+                                          MouseDoubleClick="OnGridRowDoubleClick">
+                                    <DataGrid.Columns>
+                                        <!-- Locate Column: Magnifying Glass -->
+                                        <DataGridTemplateColumn Header="Locate" Width="45">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Style="{StaticResource LocateGlassButton}" 
+                                                            Click="OnLocateButtonClick" Tag="{Binding ElementId}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="80"/>
+                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="150"/>
+                                        <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/>
+                                        <DataGridTextColumn Header="Element ID" Binding="{Binding ElementId}" Width="110"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 2. Category Detail View -->
+                <Grid x:Name="CategoryDetailView" Visibility="Collapsed" Margin="20,15,20,15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Category Banner Card -->
+                    <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock x:Name="CategoryTitleText" Text="Category Title" FontSize="18" FontWeight="Bold" Foreground="#1E293B"/>
+                                    <TextBlock x:Name="CategorySummaryText" Text="Summary description" FontSize="12" Foreground="#64748B" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border x:Name="CategoryScorePill" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="16" Padding="12,4">
+                                        <TextBlock x:Name="CategoryScoreText" Text="95 / 100" FontSize="16" FontWeight="Bold" Foreground="#047857"/>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Progress Bar -->
+                            <ProgressBar Grid.Row="1" x:Name="CategoryProgressBar" Height="6" Value="95" Maximum="100" 
+                                         Foreground="#16A34A" Background="#F1F5F9" BorderThickness="0" Margin="0,12,0,10"/>
+
+                            <!-- Metrics Wrap Panel -->
+                            <WrapPanel Grid.Row="2" x:Name="CategoryMetricsPanel"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Filter Toolbar -->
+                    <Grid Grid.Row="1" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="220"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Severity Filter Buttons -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Filter:" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <Button x:Name="CatFilterAllBtn" Style="{StaticResource FilterPillButton}" Content="All" Click="OnCategorySeverityFilterClick" Tag="All"/>
+                            <Button x:Name="CatFilterCriticalBtn" Style="{StaticResource FilterPillButton}" Content="🔴 Critical" Click="OnCategorySeverityFilterClick" Tag="Critical"/>
+                            <Button x:Name="CatFilterErrorBtn" Style="{StaticResource FilterPillButton}" Content="🟠 Error" Click="OnCategorySeverityFilterClick" Tag="Error"/>
+                            <Button x:Name="CatFilterWarningBtn" Style="{StaticResource FilterPillButton}" Content="🟡 Warning" Click="OnCategorySeverityFilterClick" Tag="Warning"/>
+                            <Button x:Name="CatFilterInfoBtn" Style="{StaticResource FilterPillButton}" Content="🔵 Info" Click="OnCategorySeverityFilterClick" Tag="Info"/>
+                        </StackPanel>
+
+                        <!-- Search Filter Box -->
+                        <Border Grid.Column="2" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="6" Padding="6,2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="🔍" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBox Grid.Column="1" x:Name="SearchBox" BorderThickness="0" Background="Transparent" 
+                                         FontSize="11" TextChanged="OnSearchTextChanged" VerticalAlignment="Center"
+                                         ToolTip="Search in findings..."/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Findings DataGrid -->
+                    <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="0">
+                        <Grid>
+                            <DataGrid x:Name="CategoryFindingsGrid" AutoGenerateColumns="False" IsReadOnly="True" 
+                                      HeadersVisibility="Column" Background="White" RowBackground="White"
+                                      AlternatingRowBackground="#F8FAFC" GridLinesVisibility="Horizontal"
+                                      HorizontalGridLinesBrush="#F1F5F9" SelectionMode="Single"
+                                      MouseDoubleClick="OnGridRowDoubleClick">
+                                <DataGrid.Columns>
+                                    <!-- Locate Column: Magnifying Glass -->
+                                    <DataGridTemplateColumn Header="Locate" Width="45">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource LocateGlassButton}" 
+                                                        Click="OnLocateButtonClick" Tag="{Binding ElementId}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="80"/>
+                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="150"/>
+                                    <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/>
+                                    <DataGridTextColumn Header="Element ID" Binding="{Binding ElementId}" Width="110"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Empty State Text -->
+                            <TextBlock x:Name="EmptyStateText" Text="🎉 No issues found in this category!" 
+                                       FontSize="14" FontWeight="SemiBold" Foreground="#10B981" 
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Bottom Status Bar -->
+        <Border Grid.Row="2" Background="#FFFFFF" Padding="16,8" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="StatusMessageText" 
+                           Text="💡 Ready. Click the magnifying glass 🔍 on any finding or double-click to locate it in Revit." 
+                           FontSize="11" Foreground="#475569" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Column="1" Text="BIMHealthCheck &bull; Multi-Target Revit Add-in" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>
